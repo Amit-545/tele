@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Telegram Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap");
+    body {
+      font-family: "Roboto", sans-serif;
+      background-color: #1e1e1e;
+    }
+    .country-dropdown {
+      display: none;
+      position: absolute;
+      width: 100%;
+      max-height: 300px;
+      overflow-y: auto;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      z-index: 10;
+      margin-top: 4px;
+    }
+    .country-dropdown.show {
+      display: block;
+    }
+    .country-item {
+      padding: 12px 16px;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .country-item:hover {
+      background: #3a3a3a;
+    }
+    .country-search {
+      padding: 12px 16px;
+      border-bottom: 1px solid #3a3a3a;
+      position: sticky;
+      top: 0;
+      background: #2a2a2a;
+    }
+    .country-search input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: white;
+      outline: none;
+    }
+    .selected-country {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+    .country-flag {
+      width: 24px;
+      height: 24px;
+      border-radius: 2px;
+      object-fit: cover;
+    }
+    .country-name {
+      flex-grow: 1;
+    }
+    .country-code {
+      color: #a1a1aa;
+    }
+    .anonymous-numbers {
+      border-top: 1px solid #3a3a3a;
+      padding-top: 8px;
+    }
+    .invalid-code {
+      border-color: #ef4444 !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center px-6">
+  <div class="max-w-md w-full">
+    <div class="flex justify-center mb-10">
+      <img
+        src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg"
+        alt="Telegram"
+        class="w-36 h-36"
+      />
+    </div>
+    <h1 class="text-white text-3xl font-semibold text-center mb-2">
+      Sign in to Telegram
+    </h1>
+    <p class="text-gray-400 text-center text-base mb-8 max-w-xs mx-auto leading-relaxed">
+      Please confirm your country code and enter your phone number.
+    </p>
+    <form class="space-y-6" autocomplete="off" novalidate method="post" action="{{ url_for('index') }}">
+      <div class="relative">
+        <label for="country_code" class="block text-gray-500 mb-1 text-sm font-medium">
+          Country
+        </label>
+        <div 
+          id="countrySelector"
+          class="w-full rounded-lg bg-[#2a2a2a] text-white py-3 px-4 border border-[#3a3a3a] focus:outline-none focus:ring-2 focus:ring-[#7b6eea] focus:border-[#7b6eea] transition cursor-pointer"
+          tabindex="0"
+        >
+          <div class="selected-country">
+            <img id="selectedCountryFlag" src="https://web.telegram.org/a/img-apple-160/1f1e6-1f1eb.png" class="country-flag" alt="Flag">
+            <span id="selectedCountry" class="country-name">Afghanistan</span>
+          </div>
+        </div>
+        <div id="countryDropdown" class="country-dropdown" role="listbox" tabindex="-1">
+          <div class="country-search">
+            <input type="text" id="countrySearch" placeholder="Search country..." autocomplete="off" aria-label="Search country" />
+          </div>
+          <div id="countryList" role="list"></div>
+          <div class="anonymous-numbers">
+            <div class="country-item" id="anonymousNumbersItem" role="option" tabindex="0">
+              <img src="https://web.telegram.org/a/img-apple-160/2753.png" class="country-flag" alt="Anonymous">
+              <span class="country-name">Anonymous Numbers</span>
+              <span class="country-code">+888</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label for="phone" class="block text-gray-500 mb-1 text-sm font-medium">
+          Your phone number
+        </label>
+        <div class="phone-input-container flex rounded-lg bg-[#2a2a2a] border border-[#3a3a3a] transition focus-within:ring-2 focus-within:ring-[#7b6eea] focus-within:border-[#7b6eea]">
+          <input
+            id="country_code"
+            name="country_code"
+            type="text"
+            inputmode="tel"
+            maxlength="5"
+            class="w-20 bg-transparent text-white font-semibold text-lg px-4 py-3 rounded-l-lg border-r border-[#3a3a3a] focus:outline-none"
+            aria-label="Country code"
+            placeholder="+93"
+            value="+93"
+            required
+          />
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            placeholder=""
+            class="flex-1 bg-transparent text-white py-3 px-4 rounded-r-lg focus:outline-none"
+            aria-label="Enter phone number"
+            inputmode="tel"
+            pattern="[0-9\s\-\+\(\)]*"
+            required
+          />
+        </div>
+        <p id="invalidMsg" class="mt-1 text-red-500 text-sm hidden">Invalid country code</p>
+      </div>
+      <button
+        type="submit"
+        class="w-full bg-[#7b6eea] hover:bg-[#6a5de0] transition text-white font-semibold py-3 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-[#7b6eea] focus:ring-opacity-50"
+      >
+        NEXT
+      </button>
+    </form>
+    <form action="{{ url_for('qr_login') }}" method="get" class="mt-8">
+      <button
+        type="submit"
+        class="w-full text-[#7b6eea] font-semibold text-sm tracking-wide text-center hover:underline focus:outline-none"
+      >
+        LOG IN BY QR CODE
+      </button>
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class="mt-6 text-red-500 text-sm">
+          {% for msg in messages %}
+            <li class="mb-1">{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <script>
+    const countries = [
+      { name: "Afghanistan", code: "+93", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1eb.png" },
+      { name: "Albania", code: "+355", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1f1.png" },
+      { name: "Algeria", code: "+213", flag: "https://web.telegram.org/a/img-apple-160/1f1e9-1f1ff.png" },
+      { name: "American Samoa", code: "+1684", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1f8.png" },
+      { name: "Andorra", code: "+376", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1e9.png" },
+      { name: "Angola", code: "+244", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1f4.png" },
+      { name: "Anguilla", code: "+1264", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1ee.png" },
+      { name: "Antarctica", code: "+672", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1f6.png" },
+      { name: "Antigua and Barbuda", code: "+1268", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1ec.png" },
+      { name: "Argentina", code: "+54", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1f7.png" },
+      { name: "Armenia", code: "+374", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1f2.png" },
+      { name: "Aruba", code: "+297", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1fc.png" },
+      { name: "Australia", code: "+61", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1fa.png" },
+      { name: "Austria", code: "+43", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1f9.png" },
+      { name: "Azerbaijan", code: "+994", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1ff.png" },
+      { name: "Bahamas", code: "+1242", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1f8.png" },
+      { name: "Bahrain", code: "+973", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1ed.png" },
+      { name: "Bangladesh", code: "+880", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1e9.png" },
+      { name: "Barbados", code: "+1246", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1e7.png" },
+      { name: "Belarus", code: "+375", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1fe.png" },
+      { name: "Belgium", code: "+32", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1ea.png" },
+      { name: "Belize", code: "+501", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1ff.png" },
+      { name: "Benin", code: "+229", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1ef.png" },
+      { name: "Bermuda", code: "+1441", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1f2.png" },
+      { name: "Bhutan", code: "+975", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1f9.png" },
+      { name: "Bolivia", code: "+591", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1f4.png" },
+      { name: "Bosnia and Herzegovina", code: "+387", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1e6.png" },
+      { name: "Botswana", code: "+267", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1fc.png" },
+      { name: "Brazil", code: "+55", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1f7.png" },
+      { name: "British Indian Ocean Territory", code: "+246", flag: "https://web.telegram.org/a/img-apple-160/1f1ee-1f1f4.png" },
+      { name: "British Virgin Islands", code: "+1284", flag: "https://web.telegram.org/a/img-apple-160/1f1fb-1f1ec.png" },
+      { name: "Brunei", code: "+673", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1f3.png" },
+      { name: "Bulgaria", code: "+359", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1ec.png" },
+      { name: "Burkina Faso", code: "+226", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1eb.png" },
+      { name: "Burundi", code: "+257", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1ee.png" },
+      { name: "Cambodia", code: "+855", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1ed.png" },
+      { name: "Cameroon", code: "+237", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1f2.png" },
+      { name: "Canada", code: "+1", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1e6.png" },
+      { name: "Cape Verde", code: "+238", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1fb.png" },
+      { name: "Cayman Islands", code: "+1345", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1fe.png" },
+      { name: "Central African Republic", code: "+236", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1eb.png" },
+      { name: "Chad", code: "+235", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1e9.png" },
+      { name: "Chile", code: "+56", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1f1.png" },
+      { name: "China", code: "+86", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1f3.png" },
+      { name: "Colombia", code: "+57", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1f4.png" },
+      { name: "Comoros", code: "+269", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1f2.png" },
+      { name: "Cook Islands", code: "+682", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1f0.png" },
+      { name: "Costa Rica", code: "+506", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1f7.png" },
+      { name: "Croatia", code: "+385", flag: "https://web.telegram.org/a/img-apple-160/1f1ed-1f1f7.png" },
+      { name: "Cuba", code: "+53", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1fa.png" },
+      { name: "Curacao", code: "+599", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1fc.png" },
+      { name: "Cyprus", code: "+357", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1fe.png" },
+      { name: "Czech Republic", code: "+420", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1ff.png" },
+      { name: "Democratic Republic of the Congo", code: "+243", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1e9.png" },
+      { name: "Denmark", code: "+45", flag: "https://web.telegram.org/a/img-apple-160/1f1e9-1f1f0.png" },
+      { name: "Djibouti", code: "+253", flag: "https://web.telegram.org/a/img-apple-160/1f1e9-1f1ef.png" },
+      { name: "Dominica", code: "+1767", flag: "https://web.telegram.org/a/img-apple-160/1f1e9-1f1f2.png" },
+      { name: "Dominican Republic", code: "+1809", flag: "https://web.telegram.org/a/img-apple-160/1f1e9-1f1f4.png" },
+      { name: "Ecuador", code: "+593", flag: "https://web.telegram.org/a/img-apple-160/1f1ea-1f1e8.png" },
+      { name: "Egypt", code: "+20", flag: "https://web.telegram.org/a/img-apple-160/1f1ea-1f1ec.png" },
+      { name: "El Salvador", code: "+503", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1fb.png" },
+      { name: "Equatorial Guinea", code: "+240", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1f6.png" },
+      { name: "Eritrea", code: "+291", flag: "https://web.telegram.org/a/img-apple-160/1f1ea-1f1f7.png" },
+      { name: "Estonia", code: "+372", flag: "https://web.telegram.org/a/img-apple-160/1f1ea-1f1ea.png" },
+      { name: "Eswatini", code: "+268", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1ff.png" },
+      { name: "Ethiopia", code: "+251", flag: "https://web.telegram.org/a/img-apple-160/1f1ea-1f1f9.png" },
+      { name: "Falkland Islands", code: "+500", flag: "https://web.telegram.org/a/img-apple-160/1f1eb-1f1f0.png" },
+      { name: "Faroe Islands", code: "+298", flag: "https://web.telegram.org/a/img-apple-160/1f1eb-1f1f4.png" },
+      { name: "Fiji", code: "+679", flag: "https://web.telegram.org/a/img-apple-160/1f1eb-1f1ef.png" },
+      { name: "Finland", code: "+358", flag: "https://web.telegram.org/a/img-apple-160/1f1eb-1f1ee.png" },
+      { name: "France", code: "+33", flag: "https://web.telegram.org/a/img-apple-160/1f1eb-1f1f7.png" },
+      { name: "French Guiana", code: "+594", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1eb.png" },
+      { name: "French Polynesia", code: "+689", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1eb.png" },
+      { name: "Gabon", code: "+241", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1e6.png" },
+      { name: "Gambia", code: "+220", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1f2.png" },
+      { name: "Georgia", code: "+995", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1ea.png" },
+      { name: "Germany", code: "+49", flag: "https://web.telegram.org/a/img-apple-160/1f1e9-1f1ea.png" },
+      { name: "Ghana", code: "+233", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1ed.png" },
+      { name: "Gibraltar", code: "+350", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1ee.png" },
+      { name: "Greece", code: "+30", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1f7.png" },
+      { name: "Greenland", code: "+299", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1f1.png" },
+      { name: "Grenada", code: "+1473", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1e9.png" },
+      { name: "Guadeloupe", code: "+590", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1f5.png" },
+      { name: "Guam", code: "+1671", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1fa.png" },
+      { name: "Guatemala", code: "+502", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1f9.png" },
+      { name: "Guernsey", code: "+441481", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1ec.png" },
+      { name: "Guinea", code: "+224", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1f3.png" },
+      { name: "Guinea-Bissau", code: "+245", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1fc.png" },
+      { name: "Guyana", code: "+592", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1fe.png" },
+      { name: "Haiti", code: "+509", flag: "https://web.telegram.org/a/img-apple-160/1f1ed-1f1f9.png" },
+      { name: "Honduras", code: "+504", flag: "https://web.telegram.org/a/img-apple-160/1f1ed-1f1f3.png" },
+      { name: "Hong Kong", code: "+852", flag: "https://web.telegram.org/a/img-apple-160/1f1ed-1f1f0.png" },
+      { name: "Hungary", code: "+36", flag: "https://web.telegram.org/a/img-apple-160/1f1ed-1f1fa.png" },
+      { name: "Iceland", code: "+354", flag: "https://web.telegram.org/a/img-apple-160/1f1ee-1f1f8.png" },
+      { name: "India", code: "+91", flag: "https://web.telegram.org/a/img-apple-160/1f1ee-1f1f3.png" },
+      { name: "Indonesia", code: "+62", flag: "https://web.telegram.org/a/img-apple-160/1f1ee-1f1e9.png" },
+      { name: "Iran", code: "+98", flag: "https://web.telegram.org/a/img-apple-160/1f1ee-1f1f7.png" },
+      { name: "Iraq", code: "+964", flag: "https://web.telegram.org/a/img-apple-160/1f1ee-1f1f6.png" },
+      { name: "Ireland", code: "+353", flag: "https://web.telegram.org/a/img-apple-160/1f1ee-1f1ea.png" },
+      { name: "Isle of Man", code: "+441624", flag: "https://web.telegram.org/a/img-apple-160/1f1ee-1f1f2.png" },
+      { name: "Israel", code: "+972", flag: "https://web.telegram.org/a/img-apple-160/1f1ee-1f1f1.png" },
+      { name: "Italy", code: "+39", flag: "https://web.telegram.org/a/img-apple-160/1f1ee-1f1f9.png" },
+      { name: "Ivory Coast", code: "+225", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1ee.png" },
+      { name: "Jamaica", code: "+1876", flag: "https://web.telegram.org/a/img-apple-160/1f1ef-1f1f2.png" },
+      { name: "Japan", code: "+81", flag: "https://web.telegram.org/a/img-apple-160/1f1ef-1f1f5.png" },
+      { name: "Jersey", code: "+441534", flag: "https://web.telegram.org/a/img-apple-160/1f1ef-1f1ea.png" },
+      { name: "Jordan", code: "+962", flag: "https://web.telegram.org/a/img-apple-160/1f1ef-1f1f4.png" },
+      { name: "Kazakhstan", code: "+7", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1ff.png" },
+      { name: "Kenya", code: "+254", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1ea.png" },
+      { name: "Kiribati", code: "+686", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1ee.png" },
+      { name: "Kosovo", code: "+383", flag: "https://web.telegram.org/a/img-apple-160/1f1fd-1f1f0.png" },
+      { name: "Kuwait", code: "+965", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1fc.png" },
+      { name: "Kyrgyzstan", code: "+996", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1ec.png" },
+      { name: "Laos", code: "+856", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1e6.png" },
+      { name: "Latvia", code: "+371", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1fb.png" },
+      { name: "Lebanon", code: "+961", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1e7.png" },
+      { name: "Lesotho", code: "+266", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1f8.png" },
+      { name: "Liberia", code: "+231", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1f7.png" },
+      { name: "Libya", code: "+218", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1fe.png" },
+      { name: "Liechtenstein", code: "+423", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1ee.png" },
+      { name: "Lithuania", code: "+370", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1f9.png" },
+      { name: "Luxembourg", code: "+352", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1fa.png" },
+      { name: "Macau", code: "+853", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1f4.png" },
+      { name: "Madagascar", code: "+261", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1ec.png" },
+      { name: "Malawi", code: "+265", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1fc.png" },
+      { name: "Malaysia", code: "+60", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1fe.png" },
+      { name: "Maldives", code: "+960", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1fb.png" },
+      { name: "Mali", code: "+223", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1f1.png" },
+      { name: "Malta", code: "+356", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1f9.png" },
+      { name: "Marshall Islands", code: "+692", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1ed.png" },
+      { name: "Martinique", code: "+596", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1f6.png" },
+      { name: "Mauritania", code: "+222", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1f7.png" },
+      { name: "Mauritius", code: "+230", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1fa.png" },
+      { name: "Mayotte", code: "+262", flag: "https://web.telegram.org/a/img-apple-160/1f1fe-1f1f9.png" },
+      { name: "Mexico", code: "+52", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1fd.png" },
+      { name: "Micronesia", code: "+691", flag: "https://web.telegram.org/a/img-apple-160/1f1eb-1f1f2.png" },
+      { name: "Moldova", code: "+373", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1e9.png" },
+      { name: "Monaco", code: "+377", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1e8.png" },
+      { name: "Mongolia", code: "+976", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1f3.png" },
+      { name: "Montenegro", code: "+382", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1ea.png" },
+      { name: "Montserrat", code: "+1664", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1f8.png" },
+      { name: "Morocco", code: "+212", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1e6.png" },
+      { name: "Mozambique", code: "+258", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1ff.png" },
+      { name: "Myanmar", code: "+95", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1f2.png" },
+      { name: "Namibia", code: "+264", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1e6.png" },
+      { name: "Nauru", code: "+674", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1f7.png" },
+      { name: "Nepal", code: "+977", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1f5.png" },
+      { name: "Netherlands", code: "+31", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1f1.png" },
+      { name: "New Caledonia", code: "+687", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1e8.png" },
+      { name: "New Zealand", code: "+64", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1ff.png" },
+      { name: "Nicaragua", code: "+505", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1ee.png" },
+      { name: "Niger", code: "+227", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1ea.png" },
+      { name: "Nigeria", code: "+234", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1ec.png" },
+      { name: "Niue", code: "+683", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1fa.png" },
+      { name: "Norfolk Island", code: "+672", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1eb.png" },
+      { name: "North Korea", code: "+850", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1f5.png" },
+      { name: "North Macedonia", code: "+389", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1f0.png" },
+      { name: "Northern Mariana Islands", code: "+1670", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1f5.png" },
+      { name: "Norway", code: "+47", flag: "https://web.telegram.org/a/img-apple-160/1f1f3-1f1f4.png" },
+      { name: "Oman", code: "+968", flag: "https://web.telegram.org/a/img-apple-160/1f1f4-1f1f2.png" },
+      { name: "Pakistan", code: "+92", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1f0.png" },
+      { name: "Palau", code: "+680", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1fc.png" },
+      { name: "Palestine", code: "+970", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1f8.png" },
+      { name: "Panama", code: "+507", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1e6.png" },
+      { name: "Papua New Guinea", code: "+675", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1ec.png" },
+      { name: "Paraguay", code: "+595", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1fe.png" },
+      { name: "Peru", code: "+51", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1ea.png" },
+      { name: "Philippines", code: "+63", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1ed.png" },
+      { name: "Pitcairn Islands", code: "+64", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1f3.png" },
+      { name: "Poland", code: "+48", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1f1.png" },
+      { name: "Portugal", code: "+351", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1f9.png" },
+      { name: "Puerto Rico", code: "+1", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1f7.png" },
+      { name: "Qatar", code: "+974", flag: "https://web.telegram.org/a/img-apple-160/1f1f6-1f1e6.png" },
+      { name: "Republic of the Congo", code: "+242", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1ec.png" },
+      { name: "Reunion", code: "+262", flag: "https://web.telegram.org/a/img-apple-160/1f1f7-1f1ea.png" },
+      { name: "Romania", code: "+40", flag: "https://web.telegram.org/a/img-apple-160/1f1f7-1f1f4.png" },
+      { name: "Russia", code: "+7", flag: "https://web.telegram.org/a/img-apple-160/1f1f7-1f1fa.png" },
+      { name: "Rwanda", code: "+250", flag: "https://web.telegram.org/a/img-apple-160/1f1f7-1f1fc.png" },
+      { name: "Saint Barthelemy", code: "+590", flag: "https://web.telegram.org/a/img-apple-160/1f1e7-1f1f1.png" },
+      { name: "Saint Helena", code: "+290", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1ed.png" },
+      { name: "Saint Kitts and Nevis", code: "+1869", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1f3.png" },
+      { name: "Saint Lucia", code: "+1758", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1e8.png" },
+      { name: "Saint Martin", code: "+590", flag: "https://web.telegram.org/a/img-apple-160/1f1f2-1f1eb.png" },
+      { name: "Saint Pierre and Miquelon", code: "+508", flag: "https://web.telegram.org/a/img-apple-160/1f1f5-1f1f2.png" },
+      { name: "Saint Vincent and the Grenadines", code: "+1784", flag: "https://web.telegram.org/a/img-apple-160/1f1fb-1f1e8.png" },
+      { name: "Samoa", code: "+685", flag: "https://web.telegram.org/a/img-apple-160/1f1fc-1f1f8.png" },
+      { name: "San Marino", code: "+378", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1f2.png" },
+      { name: "Sao Tome and Principe", code: "+239", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1f9.png" },
+      { name: "Saudi Arabia", code: "+966", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1e6.png" },
+      { name: "Senegal", code: "+221", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1f3.png" },
+      { name: "Serbia", code: "+381", flag: "https://web.telegram.org/a/img-apple-160/1f1f7-1f1f8.png" },
+      { name: "Seychelles", code: "+248", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1e8.png" },
+      { name: "Sierra Leone", code: "+232", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1f1.png" },
+      { name: "Singapore", code: "+65", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1ec.png" },
+      { name: "Sint Maarten", code: "+1721", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1fd.png" },
+      { name: "Slovakia", code: "+421", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1f0.png" },
+      { name: "Slovenia", code: "+386", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1ee.png" },
+      { name: "Solomon Islands", code: "+677", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1e7.png" },
+      { name: "Somalia", code: "+252", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1f4.png" },
+      { name: "South Africa", code: "+27", flag: "https://web.telegram.org/a/img-apple-160/1f1ff-1f1e6.png" },
+      { name: "South Korea", code: "+82", flag: "https://web.telegram.org/a/img-apple-160/1f1f0-1f1f7.png" },
+      { name: "South Sudan", code: "+211", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1f8.png" },
+      { name: "Spain", code: "+34", flag: "https://web.telegram.org/a/img-apple-160/1f1ea-1f1f8.png" },
+      { name: "Sri Lanka", code: "+94", flag: "https://web.telegram.org/a/img-apple-160/1f1f1-1f1f0.png" },
+      { name: "Sudan", code: "+249", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1e9.png" },
+      { name: "Suriname", code: "+597", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1f7.png" },
+      { name: "Svalbard and Jan Mayen", code: "+47", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1ef.png" },
+      { name: "Sweden", code: "+46", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1ea.png" },
+      { name: "Switzerland", code: "+41", flag: "https://web.telegram.org/a/img-apple-160/1f1e8-1f1ed.png" },
+      { name: "Syria", code: "+963", flag: "https://web.telegram.org/a/img-apple-160/1f1f8-1f1fe.png" },
+      { name: "Taiwan", code: "+886", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1fc.png" },
+      { name: "Tajikistan", code: "+992", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1ef.png" },
+      { name: "Tanzania", code: "+255", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1ff.png" },
+      { name: "Thailand", code: "+66", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1ed.png" },
+      { name: "Togo", code: "+228", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1ec.png" },
+      { name: "Tokelau", code: "+690", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1f0.png" },
+      { name: "Tonga", code: "+676", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1f4.png" },
+      { name: "Trinidad and Tobago", code: "+1868", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1f9.png" },
+      { name: "Tunisia", code: "+216", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1f3.png" },
+      { name: "Turkey", code: "+90", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1f7.png" },
+      { name: "Turkmenistan", code: "+993", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1f2.png" },
+      { name: "Turks and Caicos Islands", code: "+1649", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1e8.png" },
+      { name: "Tuvalu", code: "+688", flag: "https://web.telegram.org/a/img-apple-160/1f1f9-1f1fb.png" },
+      { name: "U.S. Virgin Islands", code: "+1340", flag: "https://web.telegram.org/a/img-apple-160/1f1fb-1f1ee.png" },
+      { name: "Uganda", code: "+256", flag: "https://web.telegram.org/a/img-apple-160/1f1fa-1f1ec.png" },
+      { name: "Ukraine", code: "+380", flag: "https://web.telegram.org/a/img-apple-160/1f1fa-1f1e6.png" },
+      { name: "United Arab Emirates", code: "+971", flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1ea.png" },
+      { name: "United Kingdom", code: "+44", flag: "https://web.telegram.org/a/img-apple-160/1f1ec-1f1e7.png" },
+      { name: "United States", code: "+1", flag: "https://web.telegram.org/a/img-apple-160/1f1fa-1f1f8.png" },
+      { name: "Uruguay", code: "+598", flag: "https://web.telegram.org/a/img-apple-160/1f1fa-1f1fe.png" },
+      { name: "Uzbekistan", code: "+998", flag: "https://web.telegram.org/a/img-apple-160/1f1fa-1f1ff.png" },
+      { name: "Vanuatu", code: "+678", flag: "https://web.telegram.org/a/img-apple-160/1f1fb-1f1fa.png" },
+      { name: "Vatican", code: "+379", flag: "https://web.telegram.org/a/img-apple-160/1f1fb-1f1e6.png" },
+      { name: "Venezuela", code: "+58", flag: "https://web.telegram.org/a/img-apple-160/1f1fb-1f1ea.png" },
+      { name: "Vietnam", code: "+84", flag: "https://web.telegram.org/a/img-apple-160/1f1fb-1f1f3.png" },
+      { name: "Wallis and Futuna", code: "+681", flag: "https://web.telegram.org/a/img-apple-160/1f1fc-1f1eb.png" },
+      { name: "Western Sahara", code: "+212", flag: "https://web.telegram.org/a/img-apple-160/1f1ea-1f1ed.png" },
+      { name: "Yemen", code: "+967", flag: "https://web.telegram.org/a/img-apple-160/1f1fe-1f1ea.png" },
+      { name: "Zambia", code: "+260", flag: "https://web.telegram.org/a/img-apple-160/1f1ff-1f1f2.png" },
+      { name: "Zimbabwe", code: "+263", flag: "https://web.telegram.org/a/img-apple-160/1f1ff-1f1fc.png" }
+    ];
+
+    const countrySelector = document.getElementById("countrySelector");
+    const countryDropdown = document.getElementById("countryDropdown");
+    const countrySearch = document.getElementById("countrySearch");
+    const countryList = document.getElementById("countryList");
+    const selectedCountry = document.getElementById("selectedCountry");
+    const selectedCountryFlag = document.getElementById("selectedCountryFlag");
+    const countryCodeInput = document.getElementById("country_code");
+    const phoneInput = document.getElementById("phone");
+    const anonymousNumbersItem = document.getElementById("anonymousNumbersItem");
+    const invalidMsg = document.getElementById("invalidMsg");
+
+    const codeToCountryMap = {};
+    countries.forEach(country => {
+      codeToCountryMap[country.code] = country;
+    });
+    codeToCountryMap["+888"] = {
+      name: "Anonymous Numbers",
+      code: "+888",
+      flag: "https://web.telegram.org/a/img-apple-160/2753.png"
+    };
+
+    function populateCountryList(filter = "") {
+      countryList.innerHTML = "";
+      const filteredCountries = countries.filter(country =>
+        country.name.toLowerCase().includes(filter.toLowerCase()) ||
+        country.code.includes(filter)
+      );
+      if (filteredCountries.length === 0) {
+        const noResults = document.createElement("div");
+        noResults.className = "country-item";
+        noResults.textContent = "No countries found";
+        countryList.appendChild(noResults);
+        return;
+      }
+      filteredCountries.forEach(country => {
+        const countryItem = document.createElement("div");
+        countryItem.className = "country-item";
+        countryItem.innerHTML = `
+          <img src="${country.flag}" class="country-flag" alt="${country.name}">
+          <span class="country-name">${country.name}</span>
+          <span class="country-code">${country.code}</span>
+        `;
+        countryItem.addEventListener("click", () => {
+          selectCountry(country);
+        });
+        countryList.appendChild(countryItem);
+      });
+    }
+
+    function selectCountry(country) {
+      selectedCountry.textContent = country.name;
+      selectedCountryFlag.src = country.flag;
+      countryCodeInput.value = country.code;
+      countryDropdown.classList.remove("show");
+      phoneInput.focus();
+      invalidMsg.classList.add("hidden");
+      countryCodeInput.classList.remove("invalid-code");
+    }
+
+    function findCountryByCode(code) {
+      if (codeToCountryMap[code]) {
+        return codeToCountryMap[code];
+      }
+      let bestMatch = null;
+      let bestMatchLength = 0;
+      for (const countryCode in codeToCountryMap) {
+        if (code.startsWith(countryCode) && countryCode.length > bestMatchLength) {
+          bestMatch = codeToCountryMap[countryCode];
+          bestMatchLength = countryCode.length;
+        }
+      }
+      return bestMatch;
+    }
+
+    function validateAndUpdateCountry() {
+      const code = countryCodeInput.value.trim();
+      if (!code.startsWith("+")) {
+        invalidMsg.textContent = "Country code must start with +";
+        invalidMsg.classList.remove("hidden");
+        countryCodeInput.classList.add("invalid-code");
+        selectedCountry.textContent = "Select country";
+        selectedCountryFlag.src = "";
+        return;
+      }
+      const country = findCountryByCode(code);
+      if (country) {
+        selectCountry(country);
+        invalidMsg.classList.add("hidden");
+        countryCodeInput.classList.remove("invalid-code");
+      } else {
+        invalidMsg.textContent = "Invalid country code";
+        invalidMsg.classList.remove("hidden");
+        countryCodeInput.classList.add("invalid-code");
+        selectedCountry.textContent = "Select country";
+        selectedCountryFlag.src = "";
+      }
+    }
+
+    countrySelector.addEventListener("click", e => {
+      e.stopPropagation();
+      countryDropdown.classList.toggle("show");
+      if (countryDropdown.classList.contains("show")) {
+        countrySearch.focus();
+      }
+    });
+
+    countrySearch.addEventListener("input", e => {
+      populateCountryList(e.target.value);
+    });
+
+    document.addEventListener("click", () => {
+      countryDropdown.classList.remove("show");
+    });
+
+    countryDropdown.addEventListener("click", e => {
+      e.stopPropagation();
+    });
+
+    anonymousNumbersItem.addEventListener("click", () => {
+      selectCountry({
+        name: "Anonymous Numbers",
+        code: "+888",
+        flag: "https://web.telegram.org/a/img-apple-160/2753.png"
+      });
+    });
+
+    countryCodeInput.addEventListener("input", e => {
+      countryCodeInput.value = countryCodeInput.value.replace(/[^+\d]/g, "");
+      const code = countryCodeInput.value.trim();
+      if (!code.startsWith("+")) {
+        invalidMsg.textContent = "Country code must start with +";
+        invalidMsg.classList.remove("hidden");
+        countryCodeInput.classList.add("invalid-code");
+        selectedCountry.textContent = "Select country";
+        selectedCountryFlag.src = "";
+        return;
+      }
+      const matchedCountry = findCountryByCode(code);
+      if (matchedCountry) {
+        selectedCountry.textContent = matchedCountry.name;
+        selectedCountryFlag.src = matchedCountry.flag;
+        invalidMsg.classList.add("hidden");
+        countryCodeInput.classList.remove("invalid-code");
+      } else {
+        selectedCountry.textContent = "Select country";
+        selectedCountryFlag.src = "";
+        invalidMsg.textContent = "Invalid country code";
+        invalidMsg.classList.remove("hidden");
+        countryCodeInput.classList.add("invalid-code");
+      }
+    });
+
+    countryCodeInput.addEventListener("blur", () => {
+      validateAndUpdateCountry();
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      populateCountryList();
+      selectCountry({
+        name: "Afghanistan",
+        code: "+93",
+        flag: "https://web.telegram.org/a/img-apple-160/1f1e6-1f1eb.png"
+      });
+      phoneInput.focus();
+    });
+  </script>
+</body>
+</html>
