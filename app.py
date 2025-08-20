@@ -200,5 +200,5 @@ def qr_status_route():
     entry = qr_status[session_key]
     return jsonify({'status': entry.get('status', 'starting'), 'error': entry.get('error', '')})
 
-if __name__ == '__main__':
-    app.run()
+#if __name__ == '__main__':
+    #app.run()
