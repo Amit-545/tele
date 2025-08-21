@@ -2,3 +2,4 @@ Flask
 telethon
 telebot
 qrcode
+gunicorn
