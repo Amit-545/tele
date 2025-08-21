@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Telegram QR Login</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 50px;
+        background-color: #f9f9f9;
+      }
+      img {
+        border: 2px solid #0088cc;
+        border-radius: 10px;
+        margin-top: 20px;
+      }
+      #qr-status {
+        margin-top: 30px;
+        font-weight: bold;
+        color: #333;
+        font-size: 18px;
+      }
+      button {
+        margin-top: 15px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #0088cc;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #005f85;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Scan this QR code with your Telegram app</h2>
+    <img src="{{ qr_image }}" alt="Telegram QR Code" width="250" height="250">
+    <p>Open Telegram &rarr; Settings &rarr; Devices &rarr; Scan QR code</p>
+
+    <div id="qr-status">Please scan the QR code with your Telegram app...</div>
+
+    <script>
+      async function pollStatus() {
+        try {
+          const response = await fetch("/qr_status");
+          const data = await response.json();
+          let statusDiv = document.getElementById("qr-status");
+
+          if (data.status === "success") {
+            statusDiv.textContent = "Login successful! Redirecting...";
+            setTimeout(() => {
+              window.location.href = "/";
+            }, 1500);
+          } else if (data.status === "error") {
+            if (data.error && data.error.toLowerCase().includes("expired")) {
+              statusDiv.textContent = "QR code expired. Generating new QR code...";
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
+            } else {
+              statusDiv.innerHTML = `QR login failed: ${data.error} <br><button onclick="window.location.reload();">Retry</button>`;
+            }
+          } else {
+            statusDiv.textContent = "Please scan the QR code with your Telegram app...";
+            setTimeout(pollStatus, 1200);
+          }
+        } catch (err) {
+          console.error("Error polling QR status:", err);
+          setTimeout(pollStatus, 3000);  // Retry slower on error
+        }
+      }
+      pollStatus();
+    </script>
+  </body>
+</html>
