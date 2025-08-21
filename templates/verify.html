@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <body>
+    <h2>Enter OTP (and 2FA Password if required)</h2>
+
+    <form method="post">
+      <label>OTP Code:</label>
+      <input type="text" name="code" required>
+      <br><br>
+
+      {% if need_password %}
+        <label>2FA Password:</label>
+        <input type="password" name="password" required>
+        <br><br>
+      {% endif %}
+
+      <input type="submit" value="Verify">
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color:red;">
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </body>
+</html>
